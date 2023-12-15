@@ -1,0 +1,6 @@
+*.log
+datasets/*
+models/*
+*.npz
+*.pcap
+*.lock
