@@ -9,7 +9,7 @@ node_id = sys.argv[1]  # Get the node ID from command-line arguments
 node = TcpNode(node_id,
                model_path="./models/model.json",
                weight_path="./models/model.h5",
-               dataset_path=f"./datasets/mnist-roamml/MNIST_subset_{node_id}.npz",
+               dataset_path=f"./datasets/cifar10/CIFAR10_subset_{node_id}.npz",
                data_gravity_request_timeout=2)
 
 # Let's wait all the warning of tensorflow

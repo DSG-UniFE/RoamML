@@ -253,14 +253,28 @@ class TcpNode(Node):
         """
         if load_model_from_file:
             satellite.load_model(self.model_path, self.weight_path)
-        satellite.load_dataset(self.dataset_path)
+        self.logger.info(satellite.load_dataset(self.dataset_path))
+        satellite.load_testset()
+
         satellite.train_model()
-        satellite.unload_dataset()
         self.logger.info(f"Satellite {satellite.id} model trained.")
 
         loss, acc, f1, roc = satellite.get_model_performance()
 
         self.logger.info(f"Satellite {satellite.id} performance: loss={loss} acc={acc} f1={f1} roc={roc}")
+
+        buffer_entropy, classes_count = satellite.experience_replay()
+
+        self.logger.info(f"Satellite {satellite.id} post experience replay - Buffer Entropy: {buffer_entropy} Classes Count: {classes_count}")
+
+        loss, acc, f1, roc = satellite.get_model_performance()
+
+        self.logger.info(f"Satellite {satellite.id} performance with Experience Replay: loss={loss} acc={acc} f1={f1} roc={roc}")
+
+        satellite.unload_dataset()
+        satellite.unload_testset()
+
+        
 
     def receive_satellite(self):
         """

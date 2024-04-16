@@ -2,6 +2,18 @@ import numpy as np
 from tensorflow.keras.models import Sequential, model_from_json
 from keras.utils import to_categorical
 
+import tensorflow as tf
+
+from tensorflow.keras.preprocessing.image import ImageDataGenerator
+from keras.utils import to_categorical
+from keras.optimizers import Adam
+
+from tensorflow.keras.models import Sequential
+
+from sklearn.utils import class_weight
+from keras import backend as K
+
+
 
 # form sklearn.metrics import f1_score
 
@@ -39,7 +51,17 @@ class Satellite:
         self.jobs = jobs
         self.actual_node = 0
         self.dataset = None
+        self.testset = None
         self.train_completed = False
+
+        self.memory_buffer = []
+        self.memory_buffer_size = 250
+
+        self.lr = 0.001
+        self.decay_lr = 0.7
+
+        self.training_epochs = 15
+        self.replay_epochs = 20
 
     def update_trip(self, new_trip):
         """
@@ -110,48 +132,69 @@ class Satellite:
         Returns:
             None
         """
-        x_train = np.expand_dims(self.dataset['data'][0], axis=-1)
-        y_train = to_categorical(self.dataset['data'][1], num_classes=10)
-        current_epochs = 10
+        subset_data, subset_labels = self.dataset['array1'], self.dataset['array2']
+        test_images, test_labels = self.testset['array1'], self.testset['array2']
+
         # epochs_list.append(current_epochs)
-        self.model.compile(optimizer='adam', loss='categorical_crossentropy', metrics=['accuracy'])
-        history_x = self.model.fit(x_train, y_train, epochs=current_epochs, batch_size=64, validation_split=0.2,
-                                   verbose=2)
+        self.model.compile(optimizer='adam', loss='sparse_categorical_crossentropy', metrics=['accuracy'])
+        history_x = self.model.fit(subset_data, subset_labels,
+                              epochs=self.training_epochs,
+                              # class_weight=class_weights,
+                              validation_data=(test_images, test_labels))
 
     def get_model_performance(self):
 
-        testset_x = np.load('datasets/mnist-roamml/MNIST_test_images.npz',
-                            mmap_mode='r',
-                            allow_pickle=True)
+        # testset_x = np.load('datasets/cifar10/subset_testset.npz',
+        #                     mmap_mode='r',
+        #                     allow_pickle=True)
 
-        testset_y = np.load('datasets/mnist-roamml/MNIST_test_labels.npz',
-                            mmap_mode='r',
-                            allow_pickle=True)
+        # testset_y = np.load('datasets/mnist-roamml/MNIST_test_labels.npz',
+        #                     mmap_mode='r',
+        #                     allow_pickle=True)
 
-        x_test = np.expand_dims(testset_x['arr_0'], axis=-1)
-        y_test = to_categorical(testset_y['arr_0'], num_classes=10)
+        # x_test = np.expand_dims(testset_x['arr_0'], axis=-1)
+        # y_test = to_categorical(testset_y['arr_0'], num_classes=10)
 
-        loss, acc = self.model.evaluate(x_test, y_test, verbose=0)
+        # loss, acc = self.model.evaluate(x_test, y_test, verbose=0)
 
-        from sklearn.metrics import f1_score, roc_auc_score
-        from sklearn.preprocessing import LabelBinarizer
+        # from sklearn.metrics import f1_score, roc_auc_score
+        # from sklearn.preprocessing import LabelBinarizer
 
-        predictions = self.model.predict(x_test)
+        # predictions = self.model.predict(x_test)
 
-        # Convert predictions to class labels
-        predicted_labels = np.argmax(predictions, axis=1)
+        # # Convert predictions to class labels
+        # predicted_labels = np.argmax(predictions, axis=1)
 
-        original_labels = np.argmax(y_test, axis=1)
+        # original_labels = np.argmax(y_test, axis=1)
 
-        # Calculate F1 Score
-        f1 = f1_score(original_labels, predicted_labels, average='weighted')
+        # # Calculate F1 Score
+        # f1 = f1_score(original_labels, predicted_labels, average='weighted')
 
-        lb = LabelBinarizer()
-        y_test_one_hot = lb.fit_transform(original_labels)
+        # lb = LabelBinarizer()
+        # y_test_one_hot = lb.fit_transform(original_labels)
 
-        roc_score = roc_auc_score(y_test_one_hot, predictions, multi_class='ovr')
+        # roc_score = roc_auc_score(y_test_one_hot, predictions, multi_class='ovr')
+
+                # test the model on the test set
+        test_images, test_labels = self.testset['array1'], self.testset['array2']
+        loss, acc, *is_anything_else_being_returned = self.model.evaluate(test_images, test_labels)
+        print('Test accuracy:', acc)
+
+        # test the model on the test set calculate the f1 score
+        from sklearn.metrics import f1_score
+        y_pred = self.model.predict(test_images)
+        y_pred = np.argmax(y_pred, axis=1)
+        f1 = f1_score(test_labels, y_pred, average='macro')
+
+        roc_score = 0
+
+        # print the confusion matrix
+        # from sklearn.metrics import confusion_matrix
+        # print("confusion_matrix:\n", confusion_matrix(test_labels, y_pred))
 
         return loss, acc, f1, roc_score
+
+
 
     def debug(self):
         """
@@ -225,7 +268,19 @@ class Satellite:
         self.dataset = np.load(path,
                                mmap_mode='r',
                                allow_pickle=True)
-        return self.dataset['data'].shape
+        return self.dataset['array1'].shape
+    
+    def load_testset(self, path='datasets/cifar10/CIFAR10_subset_testset.npz'):
+        """
+        Load the testset from a given path.
+
+        Returns:
+            tuple: A tuple representing the shape of the loaded testset.
+        """
+        self.testset = np.load(path,
+                    mmap_mode='r',
+                    allow_pickle=True)
+        return self.testset['array1'].shape
 
     def unload_dataset(self):
         """
@@ -235,6 +290,183 @@ class Satellite:
             None
         """
         self.dataset = None
+
+    def unload_testset(self):
+        """
+        Unload the loaded testset from the satellite.
+
+        Returns:
+            None
+        """
+        self.testset = None
+
+        # Function to add data to memory buffer with random replacement
+    def add_to_memory_buffer(self, data, labels, replacement_ratio=0.5):
+
+        # Make copies of the data and labels to avoid modifying the original arrays
+        data = np.copy(data)
+        labels = np.copy(labels)
+
+        # Check if the memory buffer is not full
+        if len(self.memory_buffer) < self.memory_buffer_size:
+            # Calculate the number of elements to add to the memory buffer
+            num_to_add = min(len(data), self.memory_buffer_size - len(self.memory_buffer))
+            
+            # Add the elements to the memory buffer
+            for i in range(num_to_add):
+                self.memory_buffer.append((np.array(data[i]), np.array(labels[i])))
+
+            # Remove the added elements from the data and labels arrays
+            data = data[num_to_add:]
+            labels = labels[num_to_add:]
+
+        # Check if the memory buffer is full and there are remaining elements in the data array
+        if len(self.memory_buffer) >= self.memory_buffer_size and len(data) > 0:
+            # Calculate the number of elements to replace in the memory buffer
+            num_to_replace = int(replacement_ratio * self.memory_buffer_size)
+            
+            # Get the unique labels in the labels array
+            unique_labels = np.unique(labels)
+            
+            # Count the occurrences of each label in the memory buffer
+            current_label_counts = np.bincount([int(tup[1]) for tup in self.memory_buffer], minlength=np.max(labels)+1)
+            
+            # Calculate the desired count of instances per class in the memory buffer
+            desired_count_per_class = len(self.memory_buffer) // len(unique_labels)
+            
+            # Calculate the replacement needs for each class
+            replacement_needs = {label: desired_count_per_class - current_label_counts[label] for label in unique_labels}
+
+            # Perform the replacements
+            for _ in range(num_to_replace):
+                # Prioritize classes with the greatest need for adjustment
+                adjustments = sorted(replacement_needs.items(), key=lambda x: x[1], reverse=True)
+                for label, need in adjustments:
+                    if need > 0:
+                        # Need more instances of this class
+                        add_indices = [i for i, l in enumerate(labels) if l == label]
+                        if not add_indices:
+                            continue  # No more instances available to add
+                        add_index = np.random.choice(add_indices)
+                    else:
+                        # Too many instances, look for a class to reduce
+                        reduce_label = label
+                        reduce_indices = [i for i, (_, l) in enumerate(self.memory_buffer) if l == reduce_label]
+                        if not reduce_indices:
+                            continue  # No instances left to remove
+                        add_index = np.random.choice(reduce_indices)
+
+                    # Execute replacement
+                    if need > 0:
+                        replace_index = np.random.choice([i for i, (_, l) in enumerate(self.memory_buffer) if l != label])
+                        self.memory_buffer[replace_index] = (np.array(data[add_index]), np.array(labels[add_index]))
+                        # Update counts and needs
+                        current_label_counts[labels[add_index]] += 1
+                        current_label_counts[int(self.memory_buffer[replace_index][1])] -= 1
+                        replacement_needs[label] -= 1  # Decrease the need for this class
+                        # Remove replaced elements from data and labels
+                        data = np.delete(data, add_index, axis=0)
+                        labels = np.delete(labels, add_index, axis=0)
+                    else:
+                        # Adjust replacement needs without adding new data, as it's a reduction case
+                        replacement_needs[label] += 1  # Decrease the reduction need for this class
+
+        # Trim the memory buffer to the desired size
+        self.memory_buffer = self.memory_buffer[:self.memory_buffer_size]
+
+        return self.calculate_entropy_buffer(self.memory_buffer), self.calculate_classes_counts(self.memory_buffer)
+
+    # Function to sample from memory buffer
+    def sample_from_memory_buffer(self, batch_size):
+        # global memory_buffer
+
+        np.random.seed()
+
+        # If the requested batch size is larger than the buffer size, return all elements in the buffer
+        if len(self.memory_buffer) < batch_size:
+            sample_data, sample_labels = zip(*self.memory_buffer)
+        else:
+            # Generate random indices for sampling
+            sample_indices = np.random.choice(len(self.memory_buffer), batch_size, replace=False)
+            # Use the indices to sample data and labels from the memory buffer
+            sample_data, sample_labels = zip(*[self.memory_buffer[idx] for idx in sample_indices])
+
+        return np.array(sample_data), np.array(sample_labels)
+
+
+    def experience_replay(self):
+
+        subset_data, subset_labels = self.dataset['array1'], self.dataset['array2']
+        test_images, test_labels = self.testset['array1'], self.testset['array2']
+
+        # Update the learning rate and optimizer as necessary
+        if self.actual_node in [3, 5, 8]:
+            self.lr *= self.decay_lr # CHIEDERE A SIMON
+
+
+         # Replay experiences from the memory buffer if it's not empty
+        if self.memory_buffer:
+            
+            # read from buffer
+            replay_data, replay_labels = self.sample_from_memory_buffer(batch_size=len(subset_data))
+
+            # calculate class weights
+            class_weights = class_weight.compute_class_weight(class_weight = 'balanced',
+                                                    classes = np.unique(replay_labels),
+                                                    y = replay_labels.flatten())
+
+            class_weights = dict(zip(np.unique(replay_labels),class_weights))
+
+            # Update the learning rate and optimizer as necessary
+            adam = tf.keras.optimizers.Adam(learning_rate=self.lr)
+
+            print(f"replay lr = {self.lr}")
+            #self.model.compile(optimizer=adam, loss='sparse_categorical_crossentropy', metrics=['accuracy', f1_m ])
+            self.model.compile(optimizer=adam, loss='sparse_categorical_crossentropy', metrics=['accuracy'])
+            
+            print("\nReplaying from memory buffer\n")
+            self.model.fit(replay_data, replay_labels,
+                    epochs=self.replay_epochs,
+                    class_weight=class_weights,
+                    validation_data=(test_images, test_labels))
+
+        # Add the current subset data to the memory buffer
+        return self.add_to_memory_buffer(subset_data, subset_labels, replacement_ratio=0.4)
+
+    def shannon_entropy_calculation(self, labels, encoder=None):
+
+        # inverse encode
+        # labels = encoder.inverse_transform(labels)
+
+        # Get the unique labels and their counts
+        unique_labels, label_counts = np.unique(labels, return_counts=True)
+
+        # Calculate the total number of samples
+        total_samples = len(labels)
+
+        # Calculate the probabilities of each label
+        probabilities = label_counts / total_samples
+
+        # Calculate the entropy
+        entropy = -np.sum(probabilities * np.log2(probabilities))
+
+        # Check if the entropy is 0
+        if entropy == 0:
+            return 0
+        else:
+            # Normalize the entropy
+            return entropy / np.log2(len(unique_labels))
+
+    def calculate_entropy_buffer(self, memory_buffer):
+        all_labels = []
+        for i in range(len(memory_buffer)):
+            labels = memory_buffer[i][1]
+            all_labels.append(labels)
+        entropy = self.shannon_entropy_calculation(all_labels)
+        return entropy
+
+    def calculate_classes_counts(self, memory_buffer):
+        return np.bincount([tup[1] for tup in memory_buffer])
 
     def set_new_actual_node(self):
         """
