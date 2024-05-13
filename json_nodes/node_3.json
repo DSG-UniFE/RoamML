@@ -1,0 +1,14 @@
+{
+    "node_id": "Node4",
+    "properties":
+    {
+        "Data volume": 6144, 
+        "Data distribution": 0.8,
+        "CPU power": 3200,
+        "GPU power": 800,
+        "Total Ram": 8,
+        "Battery Capacity": 2500,
+        "Bandwidth": 20,
+        "Latency": 20
+    }
+}

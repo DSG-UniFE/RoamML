@@ -1,3 +1,5 @@
+import json
+from os import system
 import pickle
 
 from node import Node  # Import the Node class from the 'node' module
@@ -10,7 +12,7 @@ from satellite import Satellite
 class TcpNode(Node):
 
     def __init__(self, node_id, model_path, weight_path, dataset_path, data_gravity_request_port=50001,
-                 data_gravity_request_timeout=30):
+                 data_gravity_request_timeout=30, properties_path=None):
         """
         Initialize the TcpNode object.
 
@@ -28,18 +30,68 @@ class TcpNode(Node):
         self.model_path = model_path
         self.weight_path = weight_path
         self.dataset_path = dataset_path
+        #self.properties = properties
+
+        import os
+        import glob
+        import json
+
+        # Specify the directory where the json file is located
+        json_file_path = "./Json_nodes/node_02.json"
+
+        if properties_path:
+            with open(properties_path) as file:
+                data = json.load(file)
+                #self.node_id = data['node_id']
+                self.properties = data['properties']
+
         super().__init__(node_id)  # Call the constructor of the parent class (Node)
+    
+    def __iter__(self):
+        return iter([self.node_id, self.properties])
+
+    def print_info(self):
+        self.logger.info(f"Node id : {self.node_id}")
+        self.logger.info(f"Properties : {self.properties}")
+
+    def get_list_properties(self):
+        return list(self.properties.values())
+
+    def get_json(self):
+        return self.__dict__
 
     def compute_data_gravity(self):
         """Compute Data Gravity in function of the dimension of the dataset."""
-        with open(self.dataset_path, "rb") as ds:
-            dim = 0
-            while True:
-                data = ds.read(1024)
-                if not data:
-                    break
-                dim += len(data)
-        self.data_gravity = dim / 1e15
+        # with open(self.dataset_path, "rb") as ds:
+        #     dim = 0
+        #     while True:
+        #         data = ds.read(1024)
+        #         if not data:
+        #             break
+        #         dim += len(data)
+        # self.data_gravity = dim / 1e15
+        import os
+        dataset_size = os.path.getsize(self.dataset_path)
+        #dataset_size = 2000
+
+        from support_functions import shannon_entropy_calulation
+        # Calcolare la shanon entropy del dataset
+        dataset_entropy = shannon_entropy_calulation(self.dataset_path, None)
+        #dataset_entropy = 0.86
+
+        self.properties['Data distribution'] = dataset_entropy
+        self.properties['Data volume'] = dataset_size
+
+        # print di prova
+        # node_x.get_list_properties()
+
+        # Nel caso si vuole riscrivere il file json aggiornato
+        # json.dump(node_x, json_file_path)
+        # new_json_file_path = "./nuovo_nodo.json"
+        # file_json_nuovo = open(new_json_file_path, 'w')
+        # json.dump(node_x.get_json(), file_json_nuovo, indent = 6)
+
+
 
     def request_data_gravity(self):
         """Send a data gravity request via UDP and receive responses from other nodes."""
@@ -122,7 +174,7 @@ class TcpNode(Node):
                     # Check if the received data contains the byte 0x47 (the equivalent char for 'G' as in 'Gravity')
                     if data == b'\x47':
                         # If the received byte matches, send the Data Gravity as response
-                        tuple_to_send = (self.node_id, self.data_gravity)
+                        tuple_to_send = (self.node_id, self.properties) #(self.node_id, self.data_gravity)
                         serialized_data = pickle.dumps(tuple_to_send)
                         udp_socket.sendto(serialized_data, addr)
                         self.logger.info(f"Gravity sent at {addr[0]}:{addr[1]}.")
@@ -199,7 +251,7 @@ class TcpNode(Node):
         with self.satellite_lock:
             return self.satellites.pop()
 
-    def execute_satellites(self, load_model_from_file=False):
+    def execute_satellites(self, load_model_from_file=False, shutdown_node=False):
         """
         Execute all satellites in the queue.
 
@@ -208,10 +260,10 @@ class TcpNode(Node):
         """
         while self.satellites:
             satellite = self.pop_satellite()
-            self.execute_satellite(satellite, load_model_from_file)
+            self.execute_satellite(satellite, load_model_from_file, shutdown_node)
         self.logger.info(f"No satellites in the queue to be executed.")
 
-    def execute_satellite(self, satellite, load_model_from_file=False):
+    def execute_satellite(self, satellite, load_model_from_file=False, shutdown_node=False):
         """
         Execute a satellite by performing specified jobs.
 
@@ -224,14 +276,20 @@ class TcpNode(Node):
         for job in satellite.jobs:
             if job == 'update':
                 new_nodes_gravities = self.request_data_gravity()
-                new_nodes_gravities.sort(key=lambda x: x[2], reverse=True)
-                self.logger.info(satellite.update_trip(new_nodes_gravities))
+                #new_nodes_gravities.sort(key=lambda x: x[2], reverse=True)
+                from support_functions import sort_nodes_gravities
+                new_nodes_gravities = sort_nodes_gravities(new_nodes_gravities)
+                self.logger.info(satellite.update_trip(new_nodes_gravities)) 
             elif job == 'train':
                 self.train_satellite(satellite, load_model_from_file)
             elif job == 'send':
                 self.send_satellite(satellite)
 
         self.logger.info(f"Satellite {satellite.id} execution terminated.")
+
+        if shutdown_node:
+            self.logger.info(f"Shutting down node.")
+            exit(1)
 
     def check_completed_satellites(self):
         """

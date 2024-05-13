@@ -1,0 +1,14 @@
+{
+    "node_id": "Node8",
+    "properties":
+    {
+        "Data volume": 9216, 
+        "Data distribution": 0.91,
+        "CPU power": 5200,
+        "GPU power": 2000,
+        "Total Ram": 10,
+        "Battery Capacity": 3500,
+        "Bandwidth": 110,
+        "Latency": 6
+    }
+}

@@ -60,8 +60,8 @@ class Satellite:
         self.lr = 0.001
         self.decay_lr = 0.7
 
-        self.training_epochs = 15
-        self.replay_epochs = 20
+        self.training_epochs = 1
+        self.replay_epochs = 1
 
     def update_trip(self, new_trip):
         """
@@ -93,7 +93,9 @@ class Satellite:
                 unseen_trip.append(node)
                 self.trip.remove(node)
         # Re-order the unseen_trip
-        unseen_trip.sort(key=lambda x: x[2], reverse=True)
+        #unseen_trip.sort(key=lambda x: x[2], reverse=True)
+        from support_functions import sort_nodes_gravities
+        unseen_trip = sort_nodes_gravities(unseen_trip)
 
         # Merge the trip with the sorted unseen list of nodes
         self.trip += unseen_trip
@@ -392,6 +394,45 @@ class Satellite:
             sample_data, sample_labels = zip(*[self.memory_buffer[idx] for idx in sample_indices])
 
         return np.array(sample_data), np.array(sample_labels)
+    
+    def roamml_compute_class_weight(self, class_weight, classes, y):
+        """
+        Estimates class weights for balancing the dataset. If a class in 'classes' does not appear in 'y',
+        a default weight of 1 is assigned.
+
+        :param class_weight: 'balanced' or a dict mapping class labels to weights
+        :param classes: array-like of shape (n_classes), list of all the class labels
+        :param y: array-like of shape (n_samples), array of class labels for the samples
+        :return: array of shape (n_classes,) containing the weights for each class
+        """
+        from collections import Counter
+        import numpy as np
+
+        # Count each class in y
+        class_counts = Counter(y)
+
+        if class_weight == 'balanced':
+            # Total number of samples
+            n_samples = len(y)
+            
+            # Calculate weight for each class, defaulting to 1 if the class is not in y
+            weights = {cls: n_samples / (len(classes) * class_counts.get(cls, 0)) if class_counts.get(cls, 0) != 0 else 1 for cls in classes}
+        elif isinstance(class_weight, dict):
+            # Use user-defined dictionary if provided, defaulting to 1 if the class is not specified
+            weights = {cls: class_weight.get(cls, 1) for cls in classes}
+        else:
+            raise ValueError("class_weight should be 'balanced' or a dict")
+
+        # Create a list of weights in the order of the classes provided
+        class_weights = np.array([weights.get(c, 1.0) for c in classes])
+
+        print(f"c_w: {class_weights}")
+
+        dict_class_weights = dict(zip(classes,class_weights))
+        
+        print(f"d_c_w: {dict_class_weights}")
+
+        return dict_class_weights
 
 
     def experience_replay(self):
@@ -411,11 +452,17 @@ class Satellite:
             replay_data, replay_labels = self.sample_from_memory_buffer(batch_size=len(subset_data))
 
             # calculate class weights
-            class_weights = class_weight.compute_class_weight(class_weight = 'balanced',
-                                                    classes = np.unique(replay_labels),
-                                                    y = replay_labels.flatten())
+            # class_weights = class_weight.compute_class_weight(class_weight = 'balanced',
+            #                                         classes = np.unique(replay_labels),
+            #                                         y = replay_labels.flatten())
 
-            class_weights = dict(zip(np.unique(replay_labels),class_weights))
+            # class_weights = dict(zip(np.unique(replay_labels),class_weights))
+
+            print(np.array(range(10)))
+
+            class_weights = self.roamml_compute_class_weight(class_weight = 'balanced',
+                                                            classes = np.array(range(10)),
+                                                            y = replay_labels.flatten())
 
             # Update the learning rate and optimizer as necessary
             adam = tf.keras.optimizers.Adam(learning_rate=self.lr)

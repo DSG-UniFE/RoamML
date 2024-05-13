@@ -1,0 +1,14 @@
+{
+    "node_id": "Node9",
+    "properties":
+    {
+        "Data volume": 3072, 
+        "Data distribution": 0.88,
+        "CPU power": 2400,
+        "GPU power": 1600,
+        "Total Ram": 12,
+        "Battery Capacity": 3000,
+        "Bandwidth": 40,
+        "Latency": 12
+    }
+}

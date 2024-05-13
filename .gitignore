@@ -4,3 +4,5 @@ models/*
 *.npz
 *.pcap
 *.lock
+venv
+__pycache__/

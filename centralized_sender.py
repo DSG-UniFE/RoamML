@@ -10,7 +10,7 @@ port = 50055
 node_id = sys.argv[2]
 
 # Load the dataset from disk
-file_path = f"./datasets/mnist-roamml/MNIST_subset_{node_id}.npz"
+file_path = f"./datasets/cifar10/CIFAR10_subset_{node_id}.npz"
 
 data_size = 0
 

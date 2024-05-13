@@ -34,7 +34,7 @@ class NodeLogger:
         file_handler.setFormatter(formatter)
 
         # Add handlers to the logger
-        self.logger.addHandler(console_handler)
+        # self.logger.addHandler(console_handler)
         self.logger.addHandler(file_handler)
 
     def getLogger(self):

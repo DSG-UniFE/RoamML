@@ -31,7 +31,7 @@ def topology(args):
     positions = []
 
     for x, y, z in zip(X, Y, Z):
-        positions.append(f'{x*8},{y*8},{z}')
+        positions.append(f'{x*12},{y*12},{z}')
 
     info("*** Creating nodes\n")
 
@@ -59,7 +59,7 @@ def topology(args):
     info("*** Configuring nodes\n")
     net.configureNodes()
 
-    # proto = 'batmand'
+    #proto = 'batmand'
     proto = 'olsrd2'
 
     info("*** Adding Links\n")
@@ -112,28 +112,28 @@ def topology(args):
 
 
     if '-p' not in args:
-        net.plotGraph(max_x=300, max_y=300)
+        net.plotGraph(max_x=800, max_y=800)
 
     info("*** Starting network\n")
     # net.setMobilityModel(time=0, model='RandomDirection', max_x=300, max_y=300, seed=20)
     net.build()
 
     info("\n*** Starting olsrd with dedicated config file\n")
-    sta1.cmd("olsrd -f olsrd_config_files/olsrd_node1.conf > /dev/null 2>&1 & ")
-    sta2.cmd("olsrd -f olsrd_config_files/olsrd_node2.conf > /dev/null 2>&1 & ")
-    sta3.cmd("olsrd -f olsrd_config_files/olsrd_node3.conf > /dev/null 2>&1 & ")
-    sta4.cmd("olsrd -f olsrd_config_files/olsrd_node4.conf > /dev/null 2>&1 & ")
-    sta5.cmd("olsrd -f olsrd_config_files/olsrd_node5.conf > /dev/null 2>&1 & ")
-    sta6.cmd("olsrd -f olsrd_config_files/olsrd_node6.conf > /dev/null 2>&1 & ")
-    sta7.cmd("olsrd -f olsrd_config_files/olsrd_node7.conf > /dev/null 2>&1 & ")
-    sta8.cmd("olsrd -f olsrd_config_files/olsrd_node8.conf > /dev/null 2>&1 & ")
-    sta9.cmd("olsrd -f olsrd_config_files/olsrd_node9.conf > /dev/null 2>&1 & ")
-    sta10.cmd("olsrd -f olsrd_config_files/olsrd_node10.conf > /dev/null 2>&1 & ")
-    sta11.cmd("olsrd -f olsrd_config_files/olsrd_node11.conf > /dev/null 2>&1 & ")
-    sta12.cmd("olsrd -f olsrd_config_files/olsrd_node12.conf > /dev/null 2>&1 & ")
-    sta13.cmd("olsrd -f olsrd_config_files/olsrd_node13.conf > /dev/null 2>&1 & ")
-    sta14.cmd("olsrd -f olsrd_config_files/olsrd_node14.conf > /dev/null 2>&1 & ")
-    sta15.cmd("olsrd -f olsrd_config_files/olsrd_node15.conf > /dev/null 2>&1 & ")
+    sta1.cmd("olsrd2_static sta1-wlan0 > /dev/null 2>&1 & ")
+    sta2.cmd("olsrd2_static sta2-wlan0 > /dev/null 2>&1 & ")
+    sta3.cmd("olsrd2_static sta3-wlan0 > /dev/null 2>&1 & ")
+    sta4.cmd("olsrd2_static sta4-wlan0 > /dev/null 2>&1 & ")
+    sta5.cmd("olsrd2_static sta5-wlan0 > /dev/null 2>&1 & ")
+    sta6.cmd("olsrd2_static sta6-wlan0 > /dev/null 2>&1 & ")
+    sta7.cmd("olsrd2_static sta7-wlan0 > /dev/null 2>&1 & ")
+    sta8.cmd("olsrd2_static sta8-wlan0  > /dev/null 2>&1 & ")
+    sta9.cmd("olsrd2_static sta9-wlan0  > /dev/null 2>&1 & ")
+    sta10.cmd("olsrd2_static sta10-wlan0 > /dev/null 2>&1 & ")
+    sta11.cmd("olsrd2_static sta11-wlan0 > /dev/null 2>&1 & ")
+    sta12.cmd("olsrd2_static sta12-wlan0 > /dev/null 2>&1 & ")
+    sta13.cmd("olsrd2_static sta13-wlan0 > /dev/null 2>&1 & ")
+    sta14.cmd("olsrd2_static sta14-wlan0 > /dev/null 2>&1 & ")
+    sta15.cmd("olsrd2_static sta15-wlan0 > /dev/null 2>&1 & ")
     time.sleep(5)
 
     if "-s" not in args:

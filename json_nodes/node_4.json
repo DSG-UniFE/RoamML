@@ -1,0 +1,14 @@
+{
+    "node_id": "Node5",
+    "properties":
+    {
+        "Data volume": 10240, 
+        "Data distribution": 0.97,
+        "CPU power": 5200,
+        "GPU power": 1000,
+        "Total Ram": 10,
+        "Battery Capacity": 3000,
+        "Bandwidth": 50,
+        "Latency": 10
+    }
+}
