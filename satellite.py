@@ -60,8 +60,8 @@ class Satellite:
         self.lr = 0.001
         self.decay_lr = 0.7
 
-        self.training_epochs = 1
-        self.replay_epochs = 1
+        self.training_epochs = 13
+        self.replay_epochs = 17
 
     def update_trip(self, new_trip):
         """

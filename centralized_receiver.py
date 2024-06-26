@@ -2,6 +2,9 @@ import socket
 import threading
 import hashlib
 import time
+from datetime import datetime
+
+
 
 # Configuration
 host = "0.0.0.0"  # Listen on all available network interfaces
@@ -13,7 +16,9 @@ hash_algorithm = "sha1"
 def handle_client(conn, addr, req):
     received_file_path = f"received_{req}.npz"
     hasher = hashlib.new(hash_algorithm)
-    print(f"Connected by {addr}")
+    now = datetime.now()
+    tm = now.strftime("%Y-%m-%d %H:%M:%S")
+    print(f"{tm} - Connected by {addr}")
     # received_data = b""
     file_size = 0
 
@@ -25,8 +30,9 @@ def handle_client(conn, addr, req):
             file.write(data)
             hasher.update(data)
             file_size += len(data)
-
-    print(f"Hash of received file: {hasher.hexdigest()}")
+    now = datetime.now()
+    tm = now.strftime("%Y-%m-%d %H:%M:%S")
+    print(f"{tm} - Hash of received file: {hasher.hexdigest()}")
     with open("receiver_report","at") as report:
         report.writelines(f"{hasher.hexdigest()},{file_size}\n")
     conn.close()
@@ -39,8 +45,9 @@ def main():
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
         s.bind((host, port))
         s.listen()
-
-        print("Server is listening for incoming connections...")
+        now = datetime.now()
+        tm = now.strftime("%Y-%m-%d %H:%M:%S")
+        print(f"{tm} - Server is listening for incoming connections...")
         while True:
             conn, addr = s.accept()
             thread = threading.Thread(target=handle_client, args=(conn, addr, req))

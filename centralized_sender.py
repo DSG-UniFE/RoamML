@@ -3,6 +3,9 @@ import sys
 import hashlib
 import time
 # python centralized_sender.py localhost 0
+from datetime import datetime
+
+
 
 # Configuration
 host = sys.argv[1]
@@ -21,6 +24,9 @@ with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
     s.connect((host, port))
     hasher = hashlib.new("sha1")
     with open(file_path, "rb") as file:
+        now = datetime.now()
+        tm = now.strftime("%Y-%m-%d %H:%M:%S")
+        print(f"{tm} - beginning transmission")
         while True:
             chunk = file.read(1024)
             if not chunk:
@@ -30,6 +36,10 @@ with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
             data_size += len(chunk)
 
     file_hash = hasher.hexdigest()
-    print(f"File Hash: {file_hash}")
+    now = datetime.now()
+    tm = now.strftime("%Y-%m-%d %H:%M:%S")
+    print(f"{tm} - File Hash: {file_hash}")
 
-print(f"Node {node_id}: sent {data_size} bytes of data.")
+now = datetime.now()
+tm = now.strftime("%Y-%m-%d %H:%M:%S")
+print(f"{tm} - Node {node_id}: sent {data_size} bytes of data.")

@@ -36,7 +36,7 @@ def shannon_entropy_calulation(dataset_path, encoder=None):
         return entropy / np.log2(num_classes)
 
 
-def sort_nodes_gravities(nodes_gravities, criterion_types=None, method='Entropy', mic=None, lic=None):
+def sort_nodes_gravities(nodes_gravities, criterion_types=None, method='BWM', mic=None, lic=None):
 
     import numpy as np
     from pyDecision.algorithm import entropy_method
@@ -84,14 +84,33 @@ def sort_nodes_gravities(nodes_gravities, criterion_types=None, method='Entropy'
 
     matrix = np.round(matrix, decimals=3)
 
+
+    if method == 'Single':
+        print('Sorting node with Single Method')
+        # Initialize weights to zero
+        weights = np.zeros(len(list(nodes_gravities[0][2].values())))
+        # Set the weight of the first criterion (assuming criterion index to sort by is the first)
+        # First Criteria is is the size of the dataset
+        weights[0] = 1
+
     if method == 'Entropy':
-        # Entropy weight calculation
-        print('Entropy weights')
-        weights = entropy_method(matrix, criterion_types)
-    else:
-        print('Best worst weights')
-        # Call BWM Function
-        weights = bw_method(mic, lic, eps_penalty = 1, verbose = True)
+      # Entropy weight calculation
+      print('Sorting node with Entropy weights')
+      weights = entropy_method(matrix, criterion_types)
+
+    if method == 'BWM' :
+      print('Sorting node with Best worst weights')
+      # Call BWM Function
+      weights = bw_method(mic, lic, eps_penalty = 1, verbose = True)
+
+    # if method == 'Entropy':
+    #     # Entropy weight calculation
+    #     print('Entropy weights')
+    #     weights = entropy_method(matrix, criterion_types)
+    # else:
+    #     print('Best worst weights')
+    #     # Call BWM Function
+    #     weights = bw_method(mic, lic, eps_penalty = 1, verbose = True)
 
     # Use TOPSIS to create rank
     rank = topsis_method(matrix, weights, criterion_types, graph = False, verbose =False)
